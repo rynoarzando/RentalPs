@@ -47,8 +47,24 @@ app.post("/start-timer", (req, res) => {
 
 // GET /timers
 app.get("/timers", (req, res) => {
-    return res.json({ timers });
+    const now = new Date();
+
+    const updatedTimers = Object.entries(timers).reduce((acc, [tv, timer]) => {
+        if (timer.mode === "count-down") {
+            // Hitung waktu sisa untuk count-down
+            const remainingSeconds = Math.max(0, Math.floor((new Date(timer.endTime) - now) / 1000));
+            acc[tv] = { ...timer, remainingSeconds };
+        } else if (timer.mode === "count-up") {
+            // Hitung waktu berjalan untuk count-up
+            const elapsedSeconds = Math.floor((now - new Date(timer.startTime)) / 1000);
+            acc[tv] = { ...timer, remainingSeconds: elapsedSeconds }; // remainingSeconds diisi dengan waktu berjalan
+        }
+        return acc;
+    }, {});
+
+    res.json({ timers: updatedTimers });
 });
+
 
 // POST /stop-timer
 app.post("/stop-timer", (req, res) => {
