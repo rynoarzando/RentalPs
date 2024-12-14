@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV Timer Display</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #000; /* Background hitam untuk tampilan seperti monitor */
+            color: #fff; /* Teks putih untuk kontras */
+            font-family: Arial, sans-serif;
+        }
+
+        .timer-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-bottom: 1px solid #444; /* Garis pembatas antar bagian */
+        }
+
+        .timer-section:last-child {
+            border-bottom: none; /* Hilangkan garis di bagian terakhir */
+        }
+
+        .tv-title {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #f39c12; /* Warna kuning untuk judul TV */
+        }
+
+        .timer-display {
+            font-size: 6rem; /* Ukuran besar untuk waktu */
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Section untuk TV 1 -->
+    <div class="timer-section" id="tv1-section">
+        <div class="tv-title">TV 1</div>
+        <div class="timer-display" id="tv1-timer">00:00:00</div>
+    </div>
+
+    <!-- Section untuk TV 2 -->
+    <div class="timer-section" id="tv2-section">
+        <div class="tv-title">TV 2</div>
+        <div class="timer-display" id="tv2-timer">00:00:00</div>
+    </div>
+
+    <!-- Section untuk TV 3 -->
+    <div class="timer-section" id="tv3-section">
+        <div class="tv-title">TV 3</div>
+        <div class="timer-display" id="tv3-timer">00:00:00</div>
+    </div>
+
+    <script>
+        const API_BASE_URL = "http://localhost:3000";
+        const intervals = {};
+
+        // Fetch all timers from backend
+        function fetchTimers() {
+            fetch(`${API_BASE_URL}/timers`)
+                .then(response => response.json())
+                .then(data => {
+                    const timers = data.timers;
+
+                    // Update timer display for each TV
+                    Object.keys(timers).forEach(tv => {
+                        updateTimerDisplay(tv, timers[tv]);
+                    });
+                })
+                .catch(error => console.error("Error fetching timers:", error));
+        }
+
+        // Update timer display for a specific TV
+        function updateTimerDisplay(tv, timer) {
+            const timerElement = document.getElementById(`${tv}-timer`);
+
+            if (!timerElement) return;
+
+            // Clear existing interval if any
+            if (intervals[tv]) {
+                clearInterval(intervals[tv]);
+            }
+
+            // Update timer display every second
+            intervals[tv] = setInterval(() => {
+                if (timer.mode === "count-down" && timer.remainingSeconds > 0) {
+                    timer.remainingSeconds--;
+                } else if (timer.mode === "count-up") {
+                    timer.remainingSeconds++;
+                }
+
+                // Update the timer text
+                timerElement.textContent = formatTime(timer.remainingSeconds);
+            }, 1000);
+        }
+
+        // Format time in HH:MM:SS
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours.toString().padStart(2, "0")}:${minutes
+                .toString()
+                .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+        }
+
+        // Fetch timers every 5 seconds to sync with backend
+        setInterval(fetchTimers, 5000);
+
+        // Initial fetch
+        fetchTimers();
+    </script>
+</body>
+</html>
