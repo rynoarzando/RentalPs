@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-TV Timer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        .tv-controls {
+            margin: 20px auto;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .tv-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        input[type="text"], input[type="number"], select {
+            padding: 5px;
+            font-size: 14px;
+        }
+        button {
+            padding: 5px 15px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table th, table td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+        table th {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <h1>Multi-TV Timer Control</h1>
+    <div class="tv-controls">
+        <div class="tv-row">
+            <label for="tv-select">Select TV:</label>
+            <select id="tv-select">
+                <option value="tv1">TV 1</option>
+                <option value="tv2">TV 2</option>
+                <option value="tv3">TV 3</option>
+                <!-- Add more TVs here -->
+            </select>
+        </div>
+        <div class="tv-row">
+            <label for="member-name">Member Name (optional):</label>
+            <input id="member-name" type="text" placeholder="Enter name">
+        </div>
+        <div class="tv-row">
+            <label for="duration-input">Duration (minutes):</label>
+            <input id="duration-input" type="number" placeholder="Enter minutes">
+        </div>
+        <div class="tv-row">
+            <button onclick="startSelectedTimer()">Start Timer</button>
+            <button onclick="startUnlimitedTimer()">Main Tanpa Timer</button>
+        </div>
+    </div>
+
+    <h2>Active Timers</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>TV</th>
+                <th>Member Name</th>
+                <th>Start Time</th>
+                <th>End Time</th>
+                <th>Time Remaining</th>
+                <th>Biaya (Rp)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="active-timers"></tbody>
+    </table>
+
+    <script>
+        const timers = {}; // Object to store timers for multiple TVs
+        const RATE_PER_MINUTE = 7000 / 60; // Biaya per menit
+
+        // Start timer for the selected TV
+        function startSelectedTimer() {
+            const tvSelect = document.getElementById("tv-select").value;
+            const memberName = document.getElementById("member-name").value || "-";
+            const durationInput = document.getElementById("duration-input").value;
+
+            if (!durationInput || durationInput <= 0) {
+                alert("Please enter a valid duration!");
+                return;
+            }
+
+            const durationInSeconds = durationInput * 60;
+
+            if (timers[tvSelect]) {
+                clearInterval(timers[tvSelect].interval);
+            }
+
+            const startTime = new Date();
+            const endTime = new Date(startTime.getTime() + durationInSeconds * 1000);
+
+            timers[tvSelect] = {
+                memberName,
+                startTime,
+                endTime,
+                remainingSeconds: durationInSeconds,
+                countingUp: false, // Indicates this is a countdown timer
+                biaya: Math.round(RATE_PER_MINUTE * durationInput), // Fixed biaya
+                interval: null,
+            };
+
+            renderTimerRow(tvSelect);
+            updateTimerDisplay(tvSelect);
+
+            timers[tvSelect].interval = setInterval(() => {
+                timers[tvSelect].remainingSeconds--;
+                updateTimerDisplay(tvSelect);
+
+                if (timers[tvSelect].remainingSeconds <= 0) {
+                    clearInterval(timers[tvSelect].interval);
+                    alert(`${tvSelect.toUpperCase()} timer is done!`);
+                }
+            }, 1000);
+        }
+
+        // Start unlimited timer (counting up from 0)
+        function startUnlimitedTimer() {
+            const tvSelect = document.getElementById("tv-select").value;
+            const memberName = document.getElementById("member-name").value || "-";
+
+            if (timers[tvSelect]) {
+                clearInterval(timers[tvSelect].interval);
+            }
+
+            const startTime = new Date();
+
+            timers[tvSelect] = {
+                memberName,
+                startTime,
+                endTime: "-",
+                remainingSeconds: 0,
+                countingUp: true, // Indicates this is a counting-up timer
+                biaya: 0, // Biaya starts at 0
+                interval: null,
+            };
+
+            renderTimerRow(tvSelect);
+            updateTimerDisplay(tvSelect);
+
+            timers[tvSelect].interval = setInterval(() => {
+                timers[tvSelect].remainingSeconds++;
+                timers[tvSelect].biaya = Math.round(
+                    (timers[tvSelect].remainingSeconds / 60) * RATE_PER_MINUTE
+                );
+                updateTimerDisplay(tvSelect);
+            }, 1000);
+        }
+
+        // Update the timer display
+        function updateTimerDisplay(tv) {
+            const timer = timers[tv];
+            const remainingTime = timer.countingUp
+                ? formatTime(timer.remainingSeconds)
+                : formatTime(timer.remainingSeconds);
+            const biayaDisplay = timer.biaya;
+
+            const timerRow = document.getElementById(`row-${tv}`);
+            if (timerRow) {
+                timerRow.querySelector(".time-remaining").textContent = remainingTime;
+                timerRow.querySelector(".biaya").textContent = biayaDisplay;
+            }
+        }
+
+        // Render the timer row in the table
+        function renderTimerRow(tv) {
+            const timer = timers[tv];
+            const activeTimersBody = document.getElementById("active-timers");
+
+            let timerRow = document.getElementById(`row-${tv}`);
+            if (!timerRow) {
+                timerRow = document.createElement("tr");
+                timerRow.id = `row-${tv}`;
+                timerRow.innerHTML = `
+                    <td>${tv.toUpperCase()}</td>
+                    <td class="member-name">${timer.memberName}</td>
+                    <td class="start-time">${formatDate(timer.startTime)}</td>
+                    <td class="end-time">${timer.endTime !== "-" ? formatDate(timer.endTime) : "-"}</td>
+                    <td class="time-remaining"></td>
+                    <td class="biaya"></td>
+                    <td><button onclick="stopTimer('${tv}')">Stop</button></td>
+                `;
+                activeTimersBody.appendChild(timerRow);
+            }
+        }
+
+        // Stop the timer for a specific TV
+        function stopTimer(tv) {
+            if (timers[tv]) {
+                clearInterval(timers[tv].interval);
+                delete timers[tv];
+                const timerRow = document.getElementById(`row-${tv}`);
+                if (timerRow) {
+                    timerRow.remove();
+                }
+            }
+        }
+
+        // Format time in HH:MM:SS
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours.toString().padStart(2, "0")}:${minutes
+                .toString()
+                .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+        }
+
+        // Format date for Start and End Time
+        function formatDate(date) {
+            return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes()
+                .toString()
+                .padStart(2, "0")}:${date.getSeconds().toString().padStart(2, "0")}`;
+        }
+    </script>
+</body>
+</html>
